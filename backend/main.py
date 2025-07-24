@@ -5,6 +5,7 @@ from utils.faiss_handler import load_faiss_index, get_top_k_chunks
 from utils.constants import INDEX_PATH, METADATA_PATH
 from utils.gemini_generator import generate_answer
 from utils.embedder import embed_chunks
+from utils.db_config import execute_sql
 import pickle
 from fastapi.middleware.cors import CORSMiddleware
 import logging
@@ -114,6 +115,9 @@ You are an expert PostgreSQL assistant. Given the schema context and user query,
             logger.info(f"🟢 Extracted SQL:\n{sql_generated}")
         else:
             logger.warning("⚠️ Could not extract SQL from the response.")
+
+        sql_response= execute_sql(sql_generated)
+        print(sql_response)
 
         return {
             "response": answer,
