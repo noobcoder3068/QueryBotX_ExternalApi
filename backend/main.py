@@ -94,15 +94,12 @@ You are an expert PostgreSQL assistant. Given the schema context and user query,
 
 ### SQL Query:
 """
-    
-    # Step 5: Generate response
-    # Step 5: Generate response
     try:
         logger.info("🤖 Sending prompt to Gemini...")
         logger.info(f"\n📤 Full Prompt:\n{full_prompt}\n")
-    
+
         answer = generate_answer(full_prompt)
-    
+
         if not answer:
             logger.warning("⚠️ Gemini returned an empty response.")
             return {"response": "⚠️ No response from Gemini. Please try again."}
@@ -116,17 +113,35 @@ You are an expert PostgreSQL assistant. Given the schema context and user query,
         else:
             logger.warning("⚠️ Could not extract SQL from the response.")
 
-        sql_response= execute_sql(sql_generated)
+        sql_response = execute_sql(sql_generated)
         print(sql_response)
 
+        # Step 6: Generate summarized response
+        summary_prompt = f"""
+You are an AI assistant that helps users understand the output of their database queries in plain English.
+
+### User Question:
+{query}
+
+### Raw SQL Output from the Database:
+{sql_response}
+
+### Instructions:
+Summarize the output in a natural, concise, and informative way for the user. Avoid exposing raw SQL or table formatting. If the data is empty, mention that clearly. Respond in 2–3 lines max, unless more detail is required.
+"""
+        final_ans = generate_answer(summary_prompt)
+        print("✅ English Summary:\n", final_ans)
+
         return {
-            "response": answer,
-            "sql_generated": sql_generated
+            "sql_generated": sql_generated,
+            "sql_response": sql_response,
+            "summary": final_ans
         }
 
     except Exception as e:
         logger.error("❌ Error while generating response from Gemini", exc_info=True)
         return {"error": str(e)}
+
 
 
 # Server runner

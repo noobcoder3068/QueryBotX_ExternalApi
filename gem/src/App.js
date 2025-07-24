@@ -21,7 +21,7 @@ function App() {
       });
 
       const data = await res.json();
-      setResponse(data.sql_generated || 'No response received');
+      setResponse(data.summary || 'No response received');
     } catch (err) {
       setResponse('Error occurred. Check backend console.');
     }
