@@ -17,11 +17,11 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: prompt, k: 2 }), // ✅ fixed key name and added k
+        body: JSON.stringify({ query: prompt, k: 1 }), 
       });
 
       const data = await res.json();
-      setResponse(data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received');
+      setResponse(data.sql_generated || 'No response received');
     } catch (err) {
       setResponse('Error occurred. Check backend console.');
     }

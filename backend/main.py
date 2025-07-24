@@ -8,6 +8,7 @@ from utils.embedder import embed_chunks
 import pickle
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import re
 
 # Configure logging
 logging.basicConfig(
@@ -49,7 +50,7 @@ with open(METADATA_PATH, 'rb') as f:
 # Request model
 class QueryRequest(BaseModel):
     query: str
-    k: int = 2
+    k: int = 1
 
 # Endpoint
 @app.post("/ask")
@@ -76,12 +77,53 @@ def handle_query(request: QueryRequest):
 
     # Step 4: Construct prompt
     context = "\n".join([materialize_chunk(chunk) for chunk in top_k_chunks])
-    full_prompt = f"""Context:\n{context}\n\nAnswer the following user query by building a SQL query based on the above context:\n\nQuery: {query}"""
+    full_prompt = f"""
+You are an expert PostgreSQL assistant. Given the schema context and user query, generate an accurate and efficient SQL query.
 
+### Context:
+{context}
+
+### User Query:
+{query}
+
+### Guidelines:
+- Use only the information from the context.
+- Do not explain or add comments.
+- Only return a syntactically correct SQL query between triple backticks (```) with no additional text.
+
+### SQL Query:
+"""
+    
     # Step 5: Generate response
-    answer = generate_answer(full_prompt)
+    # Step 5: Generate response
+    try:
+        logger.info("🤖 Sending prompt to Gemini...")
+        logger.info(f"\n📤 Full Prompt:\n{full_prompt}\n")
+    
+        answer = generate_answer(full_prompt)
+    
+        if not answer:
+            logger.warning("⚠️ Gemini returned an empty response.")
+            return {"response": "⚠️ No response from Gemini. Please try again."}
 
-    return {"response": answer}
+        logger.info(f"✅ Gemini Response:\n{answer}")
+        match = re.search(r"```sql\s*(.*?)\s*```", answer, re.DOTALL | re.IGNORECASE)
+        sql_generated = match.group(1).strip() if match else None
+
+        if sql_generated:
+            logger.info(f"🟢 Extracted SQL:\n{sql_generated}")
+        else:
+            logger.warning("⚠️ Could not extract SQL from the response.")
+
+        return {
+            "response": answer,
+            "sql_generated": sql_generated
+        }
+
+    except Exception as e:
+        logger.error("❌ Error while generating response from Gemini", exc_info=True)
+        return {"error": str(e)}
+
 
 # Server runner
 if __name__ == "__main__":
